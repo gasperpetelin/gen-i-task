@@ -37,7 +37,7 @@ Coefficients are estimated with **Ordinary Least Squares (OLS)**, unregularised,
 
 ### 1.b: Non-linear models
 
-We compare three models on a **chronological 80/20 train-test split**, where the first 80% of days are used for training, the last 20% for evaluation. The split is kept in time order (no random shuffle) because a random split would leak future data into training, giving an overly optimistic picture of how the model would actually perform on unseen future observations:
+We compare three models on a **chronological 80/20 train-test split**:
 
 | Model | Description |
 |---|---|
@@ -53,7 +53,7 @@ We compare three models on a **chronological 80/20 train-test split**, where the
 | Spline | 938.2 | 725.3 | 0.9202 |
 | AutoGluon | 887.0 | 693.3 | 0.9287 |
 
-The spline captures the saturation effect at high flows that the linear model misses. **AutoGluon achieves the best performance on the held-out test set**, automatically selecting and ensembling the strongest models found during training.
+**AutoGluon achieves the best performance on the held-out test set**, with the spline capturing the saturation effect at high flows that the linear model misses.
 
 ![Test set: actual vs predicted](figures/task_1b_timeseries.png)
 
@@ -84,10 +84,10 @@ Each day we would pull the latest forecasts, compute the lags from yesterday's a
 Apart from hydro, the main daily drivers are:
 
 - **Demand**: the most predictable component. Load follows a daily and weekly pattern (morning/evening peaks, low nights and weekends) and is strongly driven by temperature through heating and cooling demand.
-- **Gas and coal prices**: because gas plants are often the marginal unit in Central Europe, the gas price effectively sets the electricity price in many hours. CO₂ allowance costs stack on top of this.
-- **Wind and solar output**: zero marginal cost, so high renewable generation pushes thermal plants off the stack and pulls prices down. Forecast errors in renewables are the main source of intraday volatility.
-- **Cross-border flows**: congestion between price zones can isolate a market and cause local spikes or surpluses that would otherwise be smoothed out by trade.
-- **Unplanned outages**: a large thermal or nuclear unit tripping can tighten supply significantly within hours.
+- **Gas and coal prices**: gas plants are typically the last ones switched on to meet demand, so their cost largely sets the market price. CO₂ allowance costs add on top.
+- **Wind and solar output**: wind and solar produce power essentially for free once built, so when a lot of it is available it pushes gas and coal plants out and pulls prices down. Forecast errors in renewables are the main source of intraday volatility.
+- **Cross-border flows**: when transmission lines are full, electricity can't flow freely between countries, so a local shortage or surplus can cause big price swings that neighbouring markets can't help with.
+- **Unplanned outages**: if a large power plant goes down unexpectedly, supply drops fast and prices spike.
 
 **Expected changes**
 
@@ -123,7 +123,7 @@ monthly_baseload = (
 
 **Annual baseload value 2019: 48.75 €/MWh**
 
-Monthly values vary around this annual average. Prices are higher in winter and softer in spring and autumn when demand is moderate. The chart below shows each month alongside the annual reference line:
+Monthly values are higher in winter and lower in spring/autumn:
 
 ![Monthly baseload price 2019](figures/task_2a_baseload_monthly.png)
 
@@ -131,7 +131,7 @@ Monthly values vary around this annual average. Prices are higher in winter and 
 
 ### 2.b: Peakload price, monthly
 
-The **peakload price** is the volume-weighted average over peak hours only: **08:00–20:00, Monday–Friday** (12 hours/day × 5 days = 60 hours/week).
+The **peakload price** is the volume-weighted average over peak hours only: **08:00-20:00, Monday-Friday** (12 hours/day * 5 days = 60 hours/week).
 
 ```python
 df_peak = df.with_columns([
@@ -142,7 +142,7 @@ df_peak = df.with_columns([
 
 peak_mask = (
     (pl.col("hour") >= 8) & (pl.col("hour") <= 19) &
-    (pl.col("weekday") <= 5)  # Mon–Fri
+    (pl.col("weekday") <= 5)  # Mon-Fri
 )
 
 monthly_peakload = (
@@ -154,7 +154,7 @@ monthly_peakload = (
 )
 ```
 
-Peakload prices are consistently above their baseload counterparts each month, reflecting higher demand during business hours. The chart below shows both series side by side:
+Peakload (orange) is consistently above baseload (blue) each month:
 
 ![Monthly baseload vs peakload price 2019](figures/task_2b_peakload_monthly.png)
 
@@ -175,17 +175,15 @@ Production columns (`solar`, `hydro`, `wind`, `nuclear`, `lignite`) are already 
 | Lignite | 3,997,051 |
 | Consumer X | 8,843 |
 
-Nuclear is the dominant source, followed by hydro and lignite. Wind and solar contribute far less in this market. Consumer X draws a small 8.8 GWh over the year, roughly 0.06 % of total generation.
-
-![Annual production by source and Consumer X consumption 2019](figures/task_2c_production_totals.png)
+Nuclear is the dominant source, followed by hydro and lignite. Wind and solar contribute far less in this market. Consumer X draws 8.8 GWh over the year, roughly 0.06 % of total generation.
 
 ---
 
 ### 2.d: Average price value per source and Consumer X
 
-The **value** of electricity is the volume-weighted average price — the spot price averaged over each hour, weighted by that hour's output (or consumption). This tells you what price a plant actually captured, not just what the market averaged.
+The **value** is the average price each source actually captured, weighted by hourly output.
 
-All sources sit close to the baseload reference of 48.75 €/MWh. Lignite captures the highest value because it dispatches during expensive hours. Nuclear captures the least — it runs flat around the clock, including cheap overnight hours, pulling its average down. Solar and Consumer X both land above baseload, meaning solar generates (and Consumer X consumes) relatively more during higher-priced hours.
+All sources sit close to the baseload reference of 48.75 €/MWh. Lignite captures the highest value because it dispatches during expensive hours. Nuclear captures the least, it runs flat around the clock including cheap overnight hours, which pulls its average down. Solar and Consumer X both land above baseload, meaning solar generates (and Consumer X consumes) relatively more during higher-priced hours.
 
 ![Volume-weighted average captured price by source 2019](figures/task_2d_value_by_source.png)
 
@@ -195,11 +193,9 @@ All sources sit close to the baseload reference of 48.75 €/MWh. Lignite captur
 
 ### 3.a: Expected value on 1.4.2020
 
-The dataset contains 100 daily price scenarios from 17.1.2020 to 30.4.2020. The **expected value** on any given date is the simple arithmetic mean across all 100 scenarios for that day.
+100 daily price scenarios from 17.1.2020 to 30.4.2020. Expected value = mean across all 100 scenarios for that day.
 
 **Expected price on 1.4.2020: 48.14 €/MWh**
-
-The top panel shows all 100 scenario paths fanning out over time, with the red line tracking the daily expected value. The bottom panel shows the distribution of scenario prices specifically on 1.4.2020 — the spread is wide (roughly 35–65 €/MWh), reflecting growing uncertainty further into the future.
 
 ![All 100 price scenarios and histogram on 1.4.2020](figures/task_3a_scenarios.png)
 
@@ -211,7 +207,7 @@ The algorithm has perfect next-day foresight and can hold at most 1 unit. The gr
 
 **Scenario #77 total profit: 27.15 €/MWh**
 
-The top panel shows the price path with buy (▲) and sell (▼) markers. The bottom panel tracks the mark-to-market cumulative P&L — it rises steadily and never dips below zero, since the algorithm only enters positions it knows will be profitable.
+The top panel shows the price path with buy and sell markers. The bottom panel tracks the cumulative P&L, it rises steadily and never dips below zero since the algorithm only enters positions it knows will be profitable.
 
 ![Scenario #77 trades and cumulative P&L](figures/task_3b_scenario77.png)
 
@@ -219,7 +215,7 @@ The top panel shows the price path with buy (▲) and sell (▼) markers. The bo
 
 ### 3.c: Profit across all 100 scenarios
 
-Running the same algorithm on every scenario gives a profit distribution across all possible futures:
+Same algorithm run on all 100 scenarios:
 
 | | Profit [€/MWh] |
 |---|---|
@@ -227,7 +223,7 @@ Running the same algorithm on every scenario gives a profit distribution across 
 | Mean across all scenarios | 24.09 |
 | Worst scenario | 14.06 |
 
-The left panel shows profits ranked from worst to best — the distribution is fairly smooth with no outliers on the downside, meaning the algorithm performs reasonably in every scenario. The right panel shows the best-case price path (Scenarij_48): prices trend strongly upward from ~50 to ~65 €/MWh, creating many profitable long positions.
+Left: total profit per scenario (each bar = one scenario). Right: price path of the best scenario (Scenarij_48).
 
 ![Algorithm profit per scenario and best-case path](figures/task_3c_profits.png)
 
@@ -235,30 +231,30 @@ The left panel shows profits ranked from worst to best — the distribution is f
 
 ### 3.d: Value of the call option
 
-A **European call option** gives the holder the right — but not the obligation — to buy electricity on 1.4.2020 at a fixed **strike price of 55 €/MWh**. The payoff at expiry is:
+A **European call option** gives the holder the right, but not the obligation, to buy electricity on 1.4.2020 at a fixed **strike price of 55 €/MWh**. The payoff at expiry is:
 
 $$\text{payoff} = \max(0,\ P_{\text{1.4.2020}} - 55)$$
 
 If the market price exceeds the strike the option is exercised and the holder profits by the difference. If the market price is below the strike the option expires worthless and the holder loses only the premium paid upfront.
 
-The **fair value (premium)** of the option is the expected payoff under the 100 Monte Carlo scenarios — what a risk-neutral seller would charge so that neither buyer nor seller has a systematic edge:
+The **fair value** of the option is the mean payoff across all 100 scenarios:
 
 ```python
-strike  = 55.0
-payoffs = np.maximum(0, prices_apr1 - strike)
-option_value = payoffs.mean()   # 0.31 €/MWh
+strike = 55.0
+prices_april1 = scenario_prices.filter(date == "2020-04-01")
+option_value = np.maximum(0, prices_april1 - strike).mean()  # 0.31 €/MWh
 ```
 
 **Results:**
 
 | Metric | Value |
 |---|---|
-| Option value (fair premium) | **0.31 €/MWh** |
-| In-the-money scenarios | **7 / 100** |
-| Payoff range | 0.00 – 7.41 €/MWh |
+| Option value | **0.31 €/MWh** |
+| Scenarios above strike | **7 / 100** |
+| Payoff range | 0.00 - 7.41 €/MWh |
 
-The option is cheap because the expected price on 1.4.2020 is ~48 €/MWh — well below the 55 €/MWh strike. Only 7 out of 100 scenarios push above the strike, so most of the time the option expires worthless. Those 7 scenarios produce payoffs up to 7.41 €/MWh, pulling the average up from zero to 0.31 €/MWh.
+The option is cheap because the expected price on 1.4.2020 is 48 €/MWh, well below the 55 €/MWh strike. Only 7 out of 100 scenarios are above the strike, so most of the time the option expires worthless. Those 7 scenarios produce payoffs up to 7.41 €/MWh, on average 0.31 €/MWh.
 
-The left panel shows the payoff distribution: the grey bar represents the 93 out-of-the-money scenarios (payoff = 0) and the orange bars show the small number of in-the-money payoffs. The right panel overlays the strike and expected price on the full price distribution for 1.4.2020, showing how far into the tail the strike sits.
+The left panel shows the payoff distribution: the grey bar represents the 93 payoff == 0 and the orange bars show the small number of payoff>0 scenarios. The right panel overlays the strike and expected price on the full price distribution for 1.4.2020, showing how far into the tail the strike sits.
 
 ![Call option payoff distribution and price distribution on 1.4.2020](figures/task_3d_option.png)
